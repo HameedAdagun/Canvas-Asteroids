@@ -1,0 +1,480 @@
+<html>
+<head>
+<script>
+var canvas, ctx;
+var asteroidVertices = [];
+var asteroids = [];
+var spaceshipVertices = [];
+var spaceship;
+var bullets = [];
+var score = 0;
+var lives = 3;
+var explosionRadius = 70; // Initial radius of explosion
+var explosionMaxRadius = 90; // Maximum radius of explosion
+var explosionDuration = 60; // Frames for the explosion to last
+var explosionFrames = 0; // Counter for explosion frames
+var vulneralbe = true;
+var shooting = true;
+var shootingDelay = true;
+var alienShootingDelay = true;
+var numAseroids = 5;
+var level = 1;
+var alienShip = []; // Array to store alien spaceship objects
+var alienShipVertices = [];
+var alienSpawnTimer = 0; // Timer for alien spaceship spawning
+
+var alienBullets = [];
+
+function init() {
+	canvas = document.getElementById("canvas");
+	ctx = canvas.getContext("2d");	
+
+	asteroidVertices.push({x:-1, y:2});
+	asteroidVertices.push({x:3, y:1});
+	asteroidVertices.push({x:4, y:-2});
+	asteroidVertices.push({x:0, y:-3});
+	asteroidVertices.push({x:-3, y:-2});
+	asteroidVertices.push({x:-2, y:0});
+
+	spaceshipVertices.push({x:0, y:2});
+	spaceshipVertices.push({x:1, y:0});
+	spaceshipVertices.push({x:0, y:-1});
+	spaceshipVertices.push({x:-1, y:0});
+    
+    alienShipVertices.push({x:0, y:2});
+	alienShipVertices.push({x:1, y:0});
+	alienShipVertices.push({x:0, y:-1});
+	alienShipVertices.push({x:-1, y:0});
+
+	setKeyHandlers();
+
+	spawnAsteroids();
+	spawnSpaceship();
+	gameLoop();
+}
+
+function setKeyHandlers() {
+	document.onkeydown = function(event) {
+		var code = (event.keyCode || event.charCode);
+		if (code==37) // left arrow
+			spaceship.drot = -0.2;
+		else if (code==39) // right arrow
+			spaceship.drot = 0.2;
+		else if (code==38) // up arrow
+			spaceship.thrust = true;
+		else if (code == 32 && shooting && shootingDelay) { // spacebar for shooting       
+      			shootingDelay = false;  	
+                const myShootingTimeout = setTimeout(setShootingDelayTrue, 200);
+       			 var bullet = {
+          		  x: spaceship.x + Math.sin(spaceship.rot) * spaceship.scale, // Adjust bullet starting position
+        		  y: spaceship.y - Math.cos(spaceship.rot) * spaceship.scale, // Adjust bullet starting position
+           		  dx: Math.sin(spaceship.rot) * -15, // adjust speed here
+            	  dy: -Math.cos(spaceship.rot) * -15, // adjust speed here
+           		  radius: 3 // adjust size here                       
+        };
+        bullets.push(bullet);
+    }
+	};
+
+	document.onkeyup = function(event) {
+		var code = (event.keyCode || event.charCode);
+		if (code==37 || code==39)
+			spaceship.drot = 0;
+		else if (code==38)
+			spaceship.thrust = false;
+	};
+
+	
+}
+
+function setShootingDelayTrue() {
+	shootingDelay = true;
+}
+
+function spawnAsteroids() {
+	for (var i=0; i<numAseroids; i++) {
+		var a = {	x:Math.random()*600, y:Math.random()*600, rot:Math.random()*2*Math.PI, 
+					scale:5+Math.random()*15, 
+					dx:(Math.random()-0.5)*10, dy:(Math.random()-0.5)*10, drot:(Math.random()-0.5)*0.2,
+					vertices:asteroidVertices
+				};
+		asteroids.push(a);
+	}
+}
+
+function spawnSpaceship() {
+	spaceship = {x:300, y:300, rot:0, scale:10, dx:0, dy:0, drot:0, vertices:spaceshipVertices, thrust:false};
+    const myTimeout5 = setTimeout(setVulnerableTrue, 200);
+}
+
+// Function to spawn alien spaceships
+function spawnAlienShip() {
+    var alienShips = {
+        x: 0, // Initial x position off-screen
+        y: 30, // y position on top of canvas
+        rot:0,
+        scale:15,
+        dx: 4, // Speed of the alien spaceship
+        dy:0,
+        drot:0,
+        vertices:alienShipVertices
+        
+    };
+    alienShip.push(alienShips);
+}
+
+function setVulnerableTrue() {
+	vulnerable = true;
+}
+
+function setVulnerableFalse() {
+	vulnerable = false;
+}
+
+function explosion() {       
+    // Explosion animation triggered at spaceship position
+  	var explosionX = spaceship.x;
+    var explosionY = spaceship.y;       
+ 
+    // Start explosion animation
+    explosionFrames = explosionDuration;
+    spaceship = [];
+    
+    
+    if (explosionFrames > 0) {
+    	// Draw explosion animation
+    	drawExplosion(explosionX, explosionY, explosionRadius);
+
+    	// Update explosion parameters for next frame
+    	explosionRadius += 5; // Adjust expansion speed here
+    	explosionFrames--;
+
+    	if (explosionFrames === 0) {
+        	// Reset explosion parameters
+        	explosionRadius = 1;
+    }
+}
+
+const myTimeout1 = setTimeout(spawnSpaceship, 900);
+}
+
+function checkCollisionBetweenSpaceshipAndAsteroid() {
+for (var i=0; i<asteroids.length; i++) {
+		updateObject(asteroids[i]);	
+		drawObject(asteroids[i]);
+        
+        // Check for collision between spaceship and asteroids
+        if (checkCollision(spaceship, asteroids[i]) && vulnerable) {
+            console.log("Spaceship has been destroyed");
+            lives--;
+            
+            const myExplosionTimeout = setTimeout(explosion, 200);
+     
+            vulnerable = false;
+            const mySpaceshipTimeout1 = setTimeout(spawnSpaceship, 2000);
+          
+        }
+	}
+
+}
+
+function checkNumOfLives() {
+// End game if no lives left
+    if (lives <= 0) {
+       		 console.log("Game Over!");
+        	// game over message 
+            ctx.fillStyle = "white";
+			ctx.font = "50px Arial";
+            ctx.fillText("Game Over!", 180, 300);
+            
+            vulnerable = false;
+            shooting = false;
+    	}
+
+}
+
+function checkNumOfAsteroids() {
+ if(asteroids.length == 0) {
+     	numAseroids += 2;
+        spawnAsteroids();
+        console.log(numAseroids);
+        level++;
+        alienSpawnTimer = 0;
+        }
+        
+}
+
+function drawAlienBullets() {
+ for (var i = 0; i < alienBullets.length; i++) {
+   		 var bullet1 = alienBullets[i];
+    	 bullet1.x += bullet1.dx;
+   		 bullet1.y += bullet1.dy;
+    
+   		 // Draw bullet (circle)
+   		 ctx.beginPath();
+   		 ctx.arc(bullet1.x, bullet1.y, bullet1.radius, 0, 2 * Math.PI);
+  		 ctx.fillStyle = "red";
+   		 ctx.fill();
+        }
+
+}
+
+function drawBullets() {
+	for (var i = 0; i < bullets.length; i++) {
+   		 var bullet = bullets[i];
+    	 bullet.x += bullet.dx;
+   		 bullet.y += bullet.dy;
+    
+   		 // Draw bullet (circle)
+   		 ctx.beginPath();
+   		 ctx.arc(bullet.x, bullet.y, bullet.radius, 0, 2 * Math.PI);
+  		  ctx.fillStyle = "white";
+   		 ctx.fill();
+        }
+}
+
+function checkCollisionBetweenBulletsAndAsteroid() {
+// Check collision between bullets and asteroids
+for (var i = bullets.length - 1; i >= 0; i--) {
+    for (var j = asteroids.length - 1; j >= 0; j--) {
+        if (checkBulletCollision(bullets[i], asteroids[j])) {
+            // Collision detected, handle splitting or removal of asteroid
+            console.log("collision between bullet and asteroid");
+            if (asteroids[j].scale > 10) {
+                // Large asteroid, split into smaller ones
+                for (var k = 0; k < 2; k++) {
+                    var newAsteroid = { x:asteroids[j].x + Math.random()*3, 
+                    y:asteroids[j].y +Math.random()*3, rot:Math.random()*2*Math.PI, 
+					scale:5+Math.random()*5, 
+					dx:(Math.random()-0.5)*10, 
+                    dy:(Math.random()-0.5)*10,
+                    drot:(Math.random()-0.5)*0.2,
+					vertices:asteroidVertices
+                    };
+                    asteroids.push(newAsteroid);
+                }
+            }
+            // Remove bullet and asteroid
+            bullets.splice(i, 1);
+            asteroids.splice(j, 1);
+            score += 10; // Increase score accordingly
+        }
+    }
+}
+}
+
+
+
+function drawAlienShip() {
+for (var i = 0; i < alienShip.length; i++) {
+    // Update position
+    alienShip[i].x += alienShip[i].dx;
+    drawAlienObject(alienShip[i]);
+
+    // Check if alien spaceship crosses the screen
+    if (alienShip[i].x > canvas.width) {
+        // Remove the spaceship from the array
+        alienShip.splice(i, 1);
+   }else if (alienShip[i].x >= spaceship.x - 10 && alienShip[i].x <= spaceship.x + 10) {
+        
+        alienShip[i].dx = 0;
+       
+       // Implement shooting behavior for alien spaceships
+         var bullet1 = {
+          		  x: alienShip[i].x + Math.sin(alienShip[i].rot) * alienShip[i].scale, // Adjust bullet starting position
+        		  y: alienShip[i].y - Math.cos(alienShip[i].rot) * alienShip[i].scale, // Adjust bullet starting position
+           		  dx: Math.sin(alienShip[i].rot) * -15, // adjust speed here
+            	  dy: -Math.cos(alienShip[i].rot) * -15, // adjust speed here
+           		  radius: 3 // adjust size here
+        };
+        alienBullets.push(bullet1);
+       
+    } else {
+    alienShip[i].dx = 4;
+    }
+}
+
+// spawn alien spaceships based time intervals
+alienSpawnTimer++;
+if (alienSpawnTimer >= 500) {
+    spawnAlienShip();
+    alienSpawnTimer = 0;
+}
+}
+
+function checkCollisionBetweenAlienBulletsAndSpaceship() {
+
+   for (var i=0; i<alienBullets.length; i++) {
+		
+        // Check for collision between alien bullets and spaceship
+        if (checkBulletCollision(alienBullets[i], spaceship) && vulnerable) {
+            console.log("Spaceship has been destroyed");
+            lives--;
+            
+            
+            const myExplosionTimeout = setTimeout(explosion, 200);
+     
+            vulnerable = false;
+            const mySpaceshipTimeout1 = setTimeout(spawnSpaceship, 2000);
+          
+        }
+	}
+
+
+}
+
+function gameLoop() {
+	window.setTimeout(gameLoop, 1000/30);
+
+	ctx.fillStyle = "rgb(190,190,190)";
+	ctx.fillRect (0, 0, 600, 600);
+
+	checkCollisionBetweenSpaceshipAndAsteroid();
+    checkNumOfLives();
+    checkNumOfAsteroids();
+    drawAlienBullets();
+    drawBullets();
+    checkCollisionBetweenBulletsAndAsteroid();
+    drawAlienShip();
+    checkCollisionBetweenAlienBulletsAndSpaceship();
+    
+        
+
+	if (spaceship.thrust) {
+		spaceship.dx -= Math.sin(spaceship.rot);
+		spaceship.dy += Math.cos(spaceship.rot);
+	}
+    
+   
+	updateObject(spaceship);
+	drawSpaceshipObject(spaceship);
+    
+    // Displaying score, lives and level on the canvas
+	ctx.fillStyle = "white";
+	ctx.font = "20px Arial";
+	ctx.fillText("Score: " + score, 20, 30);
+	ctx.fillText("Lives: " + lives, 500, 30);
+    ctx.fillText("Level: " + level, 260, 30);
+}
+
+function updateObject(o) {
+	o.x += o.dx;
+	o.y += o.dy;
+	if (o.x<-20)
+		o.x += 640;
+	else if (o.x>620)
+		o.x -= 640;
+	if (o.y<-20)
+		o.y += 640;
+	else if (o.y>620)
+		o.y -= 640;
+	o.rot += o.drot;	
+}
+
+function drawObject(o) {
+	var pt = getTransformedVertex(o.vertices[0], o); 
+	ctx.beginPath();
+	ctx.moveTo(pt.x, pt.y);
+
+	for (var i=1; i<o.vertices.length; i++) {
+		var pt2 = getTransformedVertex(o.vertices[i], o); 
+		ctx.lineTo(pt2.x, pt2.y);
+	}
+
+	ctx.lineTo(pt.x, pt.y);
+	
+	ctx.stroke();	
+}
+
+function drawSpaceshipObject(o) {
+	var pt = getTransformedVertex(o.vertices[0], o); 
+	ctx.beginPath();
+	ctx.moveTo(pt.x, pt.y);
+
+	for (var i=1; i<o.vertices.length; i++) {
+		var pt2 = getTransformedVertex(o.vertices[i], o); 
+		ctx.lineTo(pt2.x, pt2.y);
+	}
+
+	ctx.lineTo(pt.x, pt.y);
+	ctx.fillStyle = "black"; // Adjust color here
+    ctx.fill();
+	ctx.stroke();	
+}
+
+function drawAlienObject(o) {
+	var pt = getTransformedVertex(o.vertices[0], o); 
+	ctx.beginPath();
+	ctx.moveTo(pt.x, pt.y);
+
+	for (var i=1; i<o.vertices.length; i++) {
+		var pt2 = getTransformedVertex(o.vertices[i], o); 
+		ctx.lineTo(pt2.x, pt2.y);
+	}
+
+	ctx.lineTo(pt.x, pt.y);
+	ctx.fillStyle = "red"; // Adjust color here
+    ctx.fill();
+	ctx.stroke();	
+}
+
+function getTransformedVertex(vertex, object) {
+	// rotate
+	var x = vertex.x * Math.cos(object.rot) - vertex.y * Math.sin(object.rot);
+	var y = vertex.x *  Math.sin(object.rot) + vertex.y * Math.cos(object.rot);
+	// scale
+	x *= object.scale;
+	y *= object.scale;
+	// translate
+	x += object.x;
+	y += object.y;
+
+	return {x:x, y:y};
+}
+
+function checkCollision(obj1, obj2) {
+    // distance between the centre of the two objects horizontally
+    var dx = obj1.x - obj2.x;
+    // distance between the centre of the two objects vertically
+    var dy = obj1.y - obj2.y;
+    // using pythagorous to get the overall difference using the horizontal and vertical difference
+    var distance = Math.sqrt(dx * dx + dy * dy);
+    // using the scale to get the combined size of both objects
+    var collisionDistance = obj1.scale + obj2.scale;
+
+    return distance <= collisionDistance;
+}
+
+function checkBulletCollision(obj1, obj2) {
+    // Calculate distance between the centers of the objects
+    var dx = obj1.x - obj2.x;
+    var dy = obj1.y - obj2.y;
+    var distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Calculate the sum of radii for collision
+    var collisionDistance = obj1.radius + obj2.scale; 
+
+    // Check for collision
+    return distance <= collisionDistance;
+}
+
+// Explosion animation function
+function drawExplosion(x, y, radius) {
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, 2 * Math.PI);
+    ctx.fillStyle = "orange"; // Adjust color here
+    ctx.fill();
+}
+
+
+</script>
+</head>
+
+<body onload="init();">
+<center>
+<canvas id="canvas" width="600" height="600"></canvas>
+
+</body>
+</html>
+
+
